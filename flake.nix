@@ -50,6 +50,17 @@
             breathe myst-parser scikit-build-core sphinx sphinx-rtd-theme
             exhale lit
           ]);
+          litDriver = pkgs.writeTextFile {
+            name = "lit-driver";
+            destination = "/bin/lit";
+            executable = true;
+            text = ''
+              #!${pythonEnv.interpreter}
+              from lit.main import main
+              if __name__ == "__main__":
+                  main()
+            '';
+          };
           mlir = pkgs.llvmPackages_22.stdenv.mkDerivation {
             pname = "mlir-custom";
             version = gitRevision;
@@ -84,7 +95,7 @@
               "-DPython3_EXECUTABLE=${pythonEnv.interpreter}"
             ];
             postInstall = ''
-              ln -s ${pythonEnv}/bin/lit $out/bin/lit
+              ln -sf ${litDriver}/bin/lit $out/bin/lit
             '';
           };
         in {
