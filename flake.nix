@@ -79,7 +79,6 @@
               "-DMLIR_ENABLE_EXECUTION_ENGINE=ON"
               "-DLLVM_BUILD_TOOLS=ON"
               "-DMLIR_BUILD_MLIR_C_DYLIB=OFF"
-              "-DLLVM_OPTIMIZED_TABLEGEN=ON"
               "-DMLIR_ENABLE_BINDINGS_PYTHON=ON"
               "-DPython_EXECUTABLE=${pythonEnv.interpreter}"
               "-DPython3_EXECUTABLE=${pythonEnv.interpreter}"
