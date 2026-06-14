@@ -89,7 +89,7 @@
             '';
           };
         in {
-          inherit mlir python;
+          inherit mlir python pythonEnv;
           default = mlir;
         });
         overlays.default = final: prev: {
