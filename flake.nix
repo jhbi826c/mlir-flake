@@ -1,9 +1,9 @@
 {
-  description = "MLIR Build with Python Bindings";
+  description = "MLIR and ClangIR Build with Python Bindings";
   inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
   outputs = { self, nixpkgs }:
     let
-      llvmVersion = "22.1.7";
+      llvmVersion = "23.1.2";
       gitRevision = "llvmorg-${llvmVersion}";
       litVersion = llvmVersion;
       supportedSystems = [ "x86_64-linux" "aarch64-linux" ];
@@ -16,7 +16,7 @@
             owner = "llvm";
             repo = "llvm-project";
             rev = gitRevision;
-            hash = "sha256-AmozlrL8AAlfr+F7OrJqr3ecd/KhBx5Bngj3SopPdyY=";
+            hash = "sha256-7RkcTVAGsNCZGGRi/qZrKxhFGDGRoYlu/WYvnvYzwCU=";
           };
           python = pkgs.python312.override {
             packageOverrides = pfinal: pprev: {
@@ -49,7 +49,7 @@
                   main()
             '';
           };
-          mlir = pkgs.llvmPackages_22.stdenv.mkDerivation {
+          mlir = pkgs.llvmPackages_23.stdenv.mkDerivation {
             pname = "mlir-custom";
             version = gitRevision;
             src = llvmSrc;
@@ -59,17 +59,19 @@
               ninja
               mold
               pythonEnv
-              llvmPackages_22.clang
-              llvmPackages_22.bintools
+              llvmPackages_23.clang
+              llvmPackages_23.bintools
             ];
             buildInputs = with pkgs; [ libxml2 ncurses zlib ];
+            hardeningDisable = [ "libcxxhardeningfast" ];
             cmakeFlags = [
               "-DCMAKE_C_COMPILER=clang"
               "-DCMAKE_CXX_COMPILER=clang++"
               "-DCMAKE_BUILD_TYPE=RelWithDebInfo"
               "-DCMAKE_CXX_STANDARD=17"
               "-DLLVM_TARGETS_TO_BUILD=host"
-              "-DLLVM_ENABLE_PROJECTS=mlir"
+              "-DLLVM_ENABLE_PROJECTS=clang;mlir"
+              "-DCLANG_ENABLE_CIR=ON"
               "-DLLVM_USE_LINKER=mold"
               "-DBUILD_SHARED_LIBS=OFF"
               "-DLLVM_INSTALL_UTILS=ON"
@@ -77,6 +79,7 @@
               "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
               "-DMLIR_ENABLE_EXECUTION_ENGINE=ON"
               "-DLLVM_BUILD_TOOLS=ON"
+              "-DLLVM_INCLUDE_BENCHMARKS=OFF"
               "-DMLIR_BUILD_MLIR_C_DYLIB=OFF"
               "-DMLIR_ENABLE_BINDINGS_PYTHON=ON"
               "-DPython_EXECUTABLE=${pythonEnv.interpreter}"
@@ -85,13 +88,23 @@
             postInstall = ''
               ln -sf ${litDriver}/bin/lit $out/bin/lit
             '';
+            passthru = {
+              isClang = true;
+              inherit (pkgs.llvmPackages_23.clang-unwrapped) hardeningUnsupportedFlagsByTargetPlatform;
+            };
           };
+          clang = pkgs.wrapCCWith {
+            cc = mlir;
+            libcxx = null;
+          };
+          clangStdenv = pkgs.overrideCC pkgs.stdenv clang;
         in {
-          inherit mlir python pythonEnv;
+          inherit mlir python pythonEnv clang clangStdenv;
           default = mlir;
         });
         overlays.default = final: prev: {
-          mlir-custom = self.packages.${final.system}.mlir;
+          mlir-custom = self.packages.${final.stdenv.hostPlatform.system}.mlir;
+          mlir-clang = self.packages.${final.stdenv.hostPlatform.system}.clang;
         };
         nixosModules.default = { pkgs, ... }: {
           nixpkgs.overlays = [ self.overlays.default ];
