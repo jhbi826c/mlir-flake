@@ -27,16 +27,6 @@
                   hash = "sha256-E1MqCIIX+mJMmbhD7rVGQN4js0FLFKpm0COAXrcxBmw=";
                 };
               });
-              exhale = pfinal.buildPythonPackage rec {
-                pname = "exhale"; version = "0.3.7"; pyproject = true;
-                src = pkgs.fetchPypi {
-                  inherit pname version;
-                  hash = "sha256-dSqW0KWUVlEdkzMR1KgfZCzWaClurNJWGQVyfV7WsNg=";
-                };
-                build-system = [ pfinal.setuptools ];
-                dependencies = [ pfinal.breathe pfinal.beautifulsoup4 pfinal.lxml pfinal.six ];
-                doCheck = false;
-              };
               lit = pprev.lit.overridePythonAttrs (old: {
                 version = litVersion;
                 src = llvmSrc;
@@ -46,9 +36,7 @@
             };
           };
           pythonEnv = python.withPackages (ps: with ps; [
-            nanobind pyyaml typing-extensions numpy ml-dtypes
-            breathe myst-parser scikit-build-core sphinx sphinx-rtd-theme
-            exhale lit
+            nanobind pyyaml typing-extensions numpy ml-dtypes lit
           ]);
           litDriver = pkgs.writeTextFile {
             name = "lit-driver";
