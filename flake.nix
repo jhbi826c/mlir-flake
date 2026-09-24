@@ -107,10 +107,12 @@
           clang = mkClang mlir;
           clangCir = mkClang mlirCir;
           clangStdenv = pkgs.overrideCC pkgs.stdenv clang;
+          clangCirStdenv = pkgs.overrideCC pkgs.stdenv clangCir;
         in {
           inherit mlir python pythonEnv clang clangStdenv;
           mlir-cir = mlirCir;
           clang-cir = clangCir;
+          clangStdenv-cir = clangCirStdenv;
           default = mlir;
         });
 
