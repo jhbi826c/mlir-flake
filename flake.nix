@@ -1,6 +1,8 @@
 {
   description = "MLIR and ClangIR Build with Python Bindings";
+
   inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
+
   outputs = { self, nixpkgs }:
     let
       llvmVersion = "23.1.2";
@@ -23,7 +25,8 @@
               numpy = pprev.numpy.overridePythonAttrs (old: rec {
                 version = "2.1.2";
                 src = pkgs.fetchPypi {
-                  inherit (old) pname; inherit version;
+                  inherit (old) pname;
+                  inherit version;
                   hash = "sha256-E1MqCIIX+mJMmbhD7rVGQN4js0FLFKpm0COAXrcxBmw=";
                 };
               });
@@ -44,13 +47,15 @@
             executable = true;
             text = ''
               #!${pythonEnv.interpreter}
+
               from lit.main import main
+
               if __name__ == "__main__":
                   main()
             '';
           };
-          mlir = pkgs.llvmPackages_23.stdenv.mkDerivation {
-            pname = "mlir-custom";
+          mkMlir = enableCIR: pkgs.llvmPackages_23.stdenv.mkDerivation {
+            pname = if enableCIR then "mlir-custom-cir" else "mlir-custom";
             version = gitRevision;
             src = llvmSrc;
             sourceRoot = "source/llvm";
@@ -71,7 +76,7 @@
               "-DCMAKE_CXX_STANDARD=17"
               "-DLLVM_TARGETS_TO_BUILD=host"
               "-DLLVM_ENABLE_PROJECTS=clang;mlir"
-              "-DCLANG_ENABLE_CIR=ON"
+              "-DCLANG_ENABLE_CIR=${if enableCIR then "ON" else "OFF"}"
               "-DLLVM_USE_LINKER=mold"
               "-DBUILD_SHARED_LIBS=OFF"
               "-DLLVM_INSTALL_UTILS=ON"
@@ -93,22 +98,30 @@
               inherit (pkgs.llvmPackages_23.clang-unwrapped) hardeningUnsupportedFlagsByTargetPlatform;
             };
           };
-          clang = pkgs.wrapCCWith {
-            cc = mlir;
+          mlir = mkMlir false;
+          mlirCir = mkMlir true;
+          mkClang = cc: pkgs.wrapCCWith {
+            inherit cc;
             libcxx = null;
           };
+          clang = mkClang mlir;
+          clangCir = mkClang mlirCir;
           clangStdenv = pkgs.overrideCC pkgs.stdenv clang;
         in {
           inherit mlir python pythonEnv clang clangStdenv;
+          mlir-cir = mlirCir;
+          clang-cir = clangCir;
           default = mlir;
         });
-        overlays.default = final: prev: {
-          mlir-custom = self.packages.${final.stdenv.hostPlatform.system}.mlir;
-          mlir-clang = self.packages.${final.stdenv.hostPlatform.system}.clang;
-        };
-        nixosModules.default = { pkgs, ... }: {
-          nixpkgs.overlays = [ self.overlays.default ];
-          environment.systemPackages = [ pkgs.mlir-custom ];
-        };
+
+      overlays.default = final: prev: {
+        mlir-custom = self.packages.${final.stdenv.hostPlatform.system}.mlir;
+        mlir-clang = self.packages.${final.stdenv.hostPlatform.system}.clang;
+      };
+
+      nixosModules.default = { pkgs, ... }: {
+        nixpkgs.overlays = [ self.overlays.default ];
+        environment.systemPackages = [ pkgs.mlir-custom ];
+      };
     };
 }
