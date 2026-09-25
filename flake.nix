@@ -10,8 +10,7 @@
       litVersion = llvmVersion;
       supportedSystems = [ "x86_64-linux" "aarch64-linux" ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
-    in {
-      packages = forAllSystems (system:
+      mkPackages = { system, enableCIR ? false }:
         let
           pkgs = import nixpkgs { inherit system; };
           llvmSrc = pkgs.fetchFromGitHub {
@@ -54,8 +53,8 @@
                   main()
             '';
           };
-          mkMlir = enableCIR: pkgs.llvmPackages_23.stdenv.mkDerivation {
-            pname = if enableCIR then "mlir-custom-cir" else "mlir-custom";
+          mlir = pkgs.llvmPackages_23.stdenv.mkDerivation {
+            pname = "mlir-custom";
             version = gitRevision;
             src = llvmSrc;
             sourceRoot = "source/llvm";
@@ -98,23 +97,19 @@
               inherit (pkgs.llvmPackages_23.clang-unwrapped) hardeningUnsupportedFlagsByTargetPlatform;
             };
           };
-          mlir = mkMlir false;
-          mlirCir = mkMlir true;
-          mkClang = cc: pkgs.wrapCCWith {
-            inherit cc;
+          clang = pkgs.wrapCCWith {
+            cc = mlir;
             libcxx = null;
           };
-          clang = mkClang mlir;
-          clangCir = mkClang mlirCir;
           clangStdenv = pkgs.overrideCC pkgs.stdenv clang;
-          clangCirStdenv = pkgs.overrideCC pkgs.stdenv clangCir;
         in {
           inherit mlir python pythonEnv clang clangStdenv;
-          mlir-cir = mlirCir;
-          clang-cir = clangCir;
-          clangStdenv-cir = clangCirStdenv;
           default = mlir;
-        });
+        };
+    in {
+      lib.mkPackages = mkPackages;
+
+      packages = forAllSystems (system: mkPackages { inherit system; });
 
       overlays.default = final: prev: {
         mlir-custom = self.packages.${final.stdenv.hostPlatform.system}.mlir;
