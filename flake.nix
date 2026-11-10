@@ -5,7 +5,7 @@
 
   outputs = { self, nixpkgs }:
     let
-      llvmVersion = "23.1.2";
+      llvmVersion = "23.1.5";
       gitRevision = "llvmorg-${llvmVersion}";
       litVersion = llvmVersion;
       supportedSystems = [ "x86_64-linux" "aarch64-linux" ];
@@ -17,7 +17,7 @@
             owner = "llvm";
             repo = "llvm-project";
             rev = gitRevision;
-            hash = "sha256-7RkcTVAGsNCZGGRi/qZrKxhFGDGRoYlu/WYvnvYzwCU=";
+            hash = "sha256-CeCwHrT0xHr4aL+X57yYAETIkcZIoNRFXj/gF0Qkpc8=";
           };
           python = pkgs.python312.override {
             packageOverrides = pfinal: pprev: {
